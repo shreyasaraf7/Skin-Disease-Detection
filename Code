@@ -1,0 +1,69 @@
+import tensorflow as tf
+from google.colab import drive
+drive.mount('/content/drive')
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+dt_gen = ImageDataGenerator(rescale=1/255,validation_split=0.0)  # normalization to 0-1 scale
+generator = dt_gen.flow_from_directory('/content/drive/MyDrive/DIP PHOTOS/',target_size=(300,300),
+                                       batch_size=2,class_mode='sparse',shuffle=True,
+                                       subset='training')
+%matplotlib inline
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+# Parameters for our graph; we'll output images in a 4x4 configuration
+nrows = 4
+ncols = 4
+# Index for iterating over images
+pic_index = 0
+import os
+Acne = os.path.join('/content/drive/MyDrive/DIP PHOTOS/Acne')
+Dandruff = os.path.join('/content/drive/MyDrive/DIP PHOTOS/Dandruff')
+Eczema = os.path.join('/content/drive/MyDrive/DIP PHOTOS/Eczema')
+Razor_Bumps = os.path.join('/content/drive/MyDrive/DIP PHOTOS/Razor Bumps')
+Urticaria = os.path.join('/content/drive/MyDrive/DIP PHOTOS/Urticaria')
+Cellulitis = os.path.join('/content/drive/MyDrive/DIP PHOTOS/cellulitis')
+
+A_nm = os.listdir(Acne)
+D_nm = os.listdir(Dandruff)
+E_nm = os.listdir(Eczema)
+R_nm = os.listdir(Razor_Bumps)
+U_nm = os.listdir(Urticaria)
+C_nm = os.listdir(Cellulitis)
+
+Derm_CLF = tf.keras.models.Sequential([
+                      tf.keras.layers.Conv2D(32,(3,3),activation='relu',input_shape=(300,300,3)),
+                      tf.keras.layers.MaxPooling2D(2,2),
+                      tf.keras.layers.Conv2D(32,(2,2),activation='relu'),
+                      tf.keras.layers.AveragePooling2D(2,2),
+                      tf.keras.layers.Conv2D(32,(3,3),activation='relu'),
+                      tf.keras.layers.MaxPooling2D(3,3),
+                      tf.keras.layers.Flatten(),
+                      tf.keras.layers.Dense(74,activation='relu'),
+                      tf.keras.layers.Dense(6,activation='softmax')
+])
+
+Derm_CLF.summary()
+
+Derm_CLF.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+            optimizer='adam',metrics=['acc'])
+RPT = Derm_CLF.fit(generator,epochs=30,verbose=1)
+import numpy as np
+from google.colab import files
+from keras.preprocessing import image
+
+Disease_classs = { 1: 'Acne' , 2:'Dandruff' , 3 : 'Eczema' , 4:'Razor Bumps'  , 5:'Urticaria' , 6:'Cellulitis'}
+uploaded = files.upload()
+
+for fn in uploaded.keys():
+ 
+  # predicting images
+  path = '/content/' + fn
+  img = image.load_img(path, target_size=(300, 300))
+  x = image.img_to_array(img)
+  x = np.expand_dims(x, axis=0)
+  
+  images = np.vstack([x])
+  classes = Derm_CLF.predict(images)
+  der_cls = dict(enumerate(classes.flatten(),1))
+  der_ky  = list(der_cls.keys())
+  der_vl =  list(der_cls.values())
+  print(Disease_classs[der_ky[der_vl.index(1.0)]])
